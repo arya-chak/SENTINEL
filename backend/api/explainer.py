@@ -8,16 +8,16 @@
 import os
 import json
 import anthropic
-from dotenv import load_dotenv
+# API key is loaded from the shell environment
 
 from backend.simulation.engine import Entity, EntityType
 from backend.classifier.model import classifier
 
-load_dotenv()
+# Run: export ANTHROPIC_API_KEY='your-key' before starting the server
 
 # ── Anthropic Client ──────────────────────────────────────────────────────────
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 
 # ── Prompt Builder ────────────────────────────────────────────────────────────
@@ -131,10 +131,21 @@ def explain_entity(entity: Entity) -> dict:
     raw_response = message.content[0].text
 
     # ── Step 3: Parse Claude's JSON response ──────────────────────────────────
+    cleaned = raw_response.strip()
+
+    # Strip markdown code fences if Claude wrapped the response
+    if "```" in cleaned:
+        # Extract content between the first ``` and last ```
+        first = cleaned.index("```") + 3        # skip opening ```
+        last  = cleaned.rindex("```")           # find closing ```
+        cleaned = cleaned[first:last].strip()
+        # Strip language tag if present (e.g. "json\n")
+        if cleaned.startswith("json"):
+            cleaned = cleaned[4:].strip()
+
     try:
-        llm_result = json.loads(raw_response)
-    except json.JSONDecodeError:
-        # If Claude didn't return clean JSON, return a safe fallback
+        llm_result = json.loads(cleaned)
+    except json.JSONDecodeError as e:
         llm_result = {
             "summary": "LLM response could not be parsed. Review raw intel report manually.",
             "reasoning": ["Parse error — manual review required"],
