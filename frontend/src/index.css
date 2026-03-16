@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+:root {
+  --hostile:   #E24B4A;
+  --friendly:  #378ADD;
+  --civilian:  #888780;
+  --ambiguous: #EF9F27;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0a0a0f;
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
