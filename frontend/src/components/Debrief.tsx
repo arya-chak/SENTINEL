@@ -2,9 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
-  ResponsiveContainer, Tooltip, Legend
+  ResponsiveContainer, Tooltip,
 } from 'recharts'
-import { api } from '../api'
 
 const BASE = 'http://localhost:8000/api'
 
@@ -15,15 +14,28 @@ function fetchDebrief() {
 function StatCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return (
     <div style={{
-      background: '#0f0f1a',
-      border: '1px solid #1e2035',
-      borderRadius: 6, padding: '12px 16px',
+      background: 'var(--color-bg-surface)',
+      border: '1px solid var(--color-border)',
+      borderRadius: 'var(--radius-lg)',
+      padding: 'var(--space-md) var(--space-lg)',
       minWidth: 120,
     }}>
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#4a5568', marginBottom: 4 }}>
+      <div style={{
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: 2,
+        color: 'var(--color-text-muted)',
+        fontFamily: 'var(--font-hud)',
+        marginBottom: 'var(--space-xs)',
+      }}>
         {label}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: color ?? '#e2e8f0' }}>
+      <div style={{
+        fontSize: 22,
+        fontWeight: 700,
+        color: color ?? 'var(--color-text-primary)',
+        fontFamily: 'var(--font-data)',
+      }}>
         {value}
       </div>
     </div>
@@ -55,90 +67,147 @@ export default function Debrief() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0a0a0f',
-      color: '#e2e8f0',
-      fontFamily: 'Inter, sans-serif',
-      padding: '24px 32px',
+      background: 'var(--color-bg-void)',
+      color: 'var(--color-text-primary)',
+      fontFamily: 'var(--font-body)',
+      padding: 'var(--space-xl) var(--space-2xl)',
     }}>
-      {/* Header */}
+
+      {/* Header bar */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 16,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--space-lg)',
         marginBottom: 28,
-        borderBottom: '1px solid #1e2035',
-        paddingBottom: 16,
+        borderBottom: '1px solid var(--color-border)',
+        paddingBottom: 'var(--space-lg)',
       }}>
-        <span style={{ color: '#378ADD', fontWeight: 700, letterSpacing: 2, fontSize: 14 }}>
+        <span style={{
+          color: 'var(--color-accent)',
+          fontFamily: 'var(--font-hud)',
+          fontWeight: 700,
+          letterSpacing: 3,
+          fontSize: 'var(--text-wordmark)',
+        }}>
           SENTINEL
         </span>
-        <span style={{ color: '#4a5568', fontSize: 12 }}>
+        <span style={{
+          color: 'var(--color-text-muted)',
+          fontFamily: 'var(--font-hud)',
+          fontSize: 'var(--text-label)',
+          letterSpacing: '0.5px',
+        }}>
           POST-SCENARIO DEBRIEF
         </span>
         <button
           onClick={() => navigate('/')}
           style={{
             marginLeft: 'auto',
-            background: '#1e2035', border: '1px solid #2d3748',
-            color: '#94a3b8', borderRadius: 4,
-            padding: '6px 14px', fontSize: 11,
-            fontWeight: 600, cursor: 'pointer', letterSpacing: 0.5,
+            background: 'var(--color-bg-overlay)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text-secondary)',
+            borderRadius: 'var(--radius-md)',
+            padding: '6px 14px',
+            fontSize: 'var(--text-label)',
+            fontWeight: 600,
+            fontFamily: 'var(--font-hud)',
+            cursor: 'pointer',
+            letterSpacing: 1,
+            transition: `border-color var(--transition-fast), color var(--transition-fast)`,
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-accent)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-accent)'
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-secondary)'
           }}
         >
           ← BACK TO OPS
         </button>
       </div>
 
+      {/* Loading / error / empty states */}
       {isLoading && (
-        <div style={{ color: '#4a5568', fontSize: 13 }}>Loading debrief data...</div>
+        <div style={{
+          color: 'var(--color-text-muted)',
+          fontSize: 'var(--text-body)',
+          fontFamily: 'var(--font-hud)',
+          letterSpacing: '0.5px',
+        }}>
+          Loading debrief data...
+        </div>
       )}
 
       {error && (
-        <div style={{ color: '#E24B4A', fontSize: 13 }}>Failed to load debrief data.</div>
+        <div style={{
+          color: 'var(--color-hostile)',
+          fontSize: 'var(--text-body)',
+          fontFamily: 'var(--font-hud)',
+        }}>
+          Failed to load debrief data.
+        </div>
       )}
 
       {data && data.message && (
-        <div style={{ color: '#4a5568', fontSize: 13 }}>{data.message}</div>
+        <div style={{
+          color: 'var(--color-text-muted)',
+          fontSize: 'var(--text-body)',
+          fontFamily: 'var(--font-hud)',
+          letterSpacing: '0.5px',
+        }}>
+          {data.message}
+        </div>
       )}
 
       {data && data.total_decisions > 0 && (
         <>
           {/* Stat cards */}
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
-            <StatCard label="TOTAL DECISIONS"   value={data.total_decisions} />
-            <StatCard label="APPROVED"          value={data.approve_count}   color="#E24B4A" />
-            <StatCard label="DENIED"            value={data.deny_count}      color="#22c55e" />
-            <StatCard label="MORE INTEL"        value={data.more_intel_count} color="#EF9F27" />
-            <StatCard label="AI AGREEMENT"      value={`${Math.round(data.followed_ai_rate * 100)}%`} color="#378ADD" />
-            <StatCard label="CASUALTIES"        value={data.friendly_casualties} color={data.friendly_casualties > 0 ? '#E24B4A' : '#22c55e'} />
+          <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap', marginBottom: 28 }}>
+            <StatCard label="TOTAL DECISIONS"  value={data.total_decisions} />
+            <StatCard label="APPROVED"         value={data.approve_count}    color="#E24B4A" />
+            <StatCard label="DENIED"           value={data.deny_count}       color="#22c55e" />
+            <StatCard label="MORE INTEL"       value={data.more_intel_count} color="#EF9F27" />
+            <StatCard label="AI AGREEMENT"     value={`${Math.round(data.followed_ai_rate * 100)}%`} color="var(--color-accent)" />
+            <StatCard label="CASUALTIES"       value={data.friendly_casualties} color={data.friendly_casualties > 0 ? '#E24B4A' : '#22c55e'} />
           </div>
 
-          {/* Radar chart + decision log side by side */}
-          <div style={{ display: 'flex', gap: 24, marginBottom: 28, alignItems: 'flex-start' }}>
+          {/* Radar chart + decision log */}
+          <div style={{ display: 'flex', gap: 'var(--space-xl)', marginBottom: 28, alignItems: 'flex-start' }}>
 
             {/* Radar chart */}
             <div style={{
-              background: '#0d0d18',
-              border: '1px solid #1e2035',
-              borderRadius: 8, padding: '16px',
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 'var(--space-lg)',
               flex: '0 0 360px',
             }}>
               <div style={{
-                fontSize: 9, fontWeight: 700, letterSpacing: 2,
-                color: '#4a5568', marginBottom: 12,
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: 2,
+                color: 'var(--color-text-muted)',
+                fontFamily: 'var(--font-hud)',
+                marginBottom: 'var(--space-md)',
               }}>
                 OPERATOR PROFILE
               </div>
               <ResponsiveContainer width="100%" height={260}>
                 <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
-                  <PolarGrid stroke="#1e2035" />
+                  <PolarGrid stroke="var(--color-border)" />
                   <PolarAngleAxis
                     dataKey="metric"
-                    tick={{ fill: '#64748b', fontSize: 10 }}
+                    tick={{ fill: '#64748b', fontSize: 10, fontFamily: 'var(--font-hud)' }}
                   />
                   <Tooltip
                     contentStyle={{
-                      background: '#0f0f1a',
-                      border: '1px solid #1e2035',
-                      fontSize: 10, borderRadius: 4,
+                      background: 'var(--color-bg-surface)',
+                      border: '1px solid var(--color-border)',
+                      fontSize: 10,
+                      borderRadius: 4,
+                      fontFamily: 'var(--font-hud)',
                     }}
                     formatter={(v: any) => [`${v}%`]}
                   />
@@ -152,10 +221,18 @@ export default function Debrief() {
                   />
                 </RadarChart>
               </ResponsiveContainer>
-              <div style={{ fontSize: 10, color: '#4a5568', marginTop: 8, lineHeight: 1.6 }}>
+              <div style={{
+                fontSize: 'var(--text-body-sm)',
+                color: 'var(--color-text-muted)',
+                fontFamily: 'var(--font-body)',
+                marginTop: 'var(--space-sm)',
+                lineHeight: 1.6,
+              }}>
                 AI agreement rate of {Math.round(data.followed_ai_rate * 100)}% indicates
-                {data.followed_ai_rate > 0.7 ? ' strong alignment with AI recommendations.'
-                  : data.followed_ai_rate > 0.4 ? ' moderate independence from AI recommendations.'
+                {data.followed_ai_rate > 0.7
+                  ? ' strong alignment with AI recommendations.'
+                  : data.followed_ai_rate > 0.4
+                  ? ' moderate independence from AI recommendations.'
                   : ' high operator independence — review decisions for bias patterns.'}
               </div>
             </div>
@@ -163,27 +240,35 @@ export default function Debrief() {
             {/* Decision log */}
             <div style={{
               flex: 1,
-              background: '#0d0d18',
-              border: '1px solid #1e2035',
-              borderRadius: 8, overflow: 'hidden',
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              overflow: 'hidden',
             }}>
               <div style={{
-                padding: '12px 16px',
-                borderBottom: '1px solid #1e2035',
-                fontSize: 9, fontWeight: 700,
-                letterSpacing: 2, color: '#4a5568',
+                padding: 'var(--space-md) var(--space-lg)',
+                borderBottom: '1px solid var(--color-border)',
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: 2,
+                color: 'var(--color-text-muted)',
+                fontFamily: 'var(--font-hud)',
               }}>
                 DECISION LOG
               </div>
               <div style={{ overflowY: 'auto', maxHeight: 300 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-label)' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #1e2035' }}>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                       {['ENTITY', 'TYPE', 'DECISION', 'CLASSIFIER', 'AI AGREE', 'T+'].map(h => (
                         <th key={h} style={{
-                          padding: '8px 12px', textAlign: 'left',
-                          fontSize: 9, fontWeight: 700,
-                          letterSpacing: 1, color: '#4a5568',
+                          padding: 'var(--space-sm) var(--space-md)',
+                          textAlign: 'left',
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: 1,
+                          color: 'var(--color-text-muted)',
+                          fontFamily: 'var(--font-hud)',
                         }}>
                           {h}
                         </th>
@@ -193,42 +278,67 @@ export default function Debrief() {
                   <tbody>
                     {data.decision_log.map((d: any, i: number) => (
                       <tr key={i} style={{
-                        borderBottom: '1px solid #0f0f1a',
-                        background: i % 2 === 0 ? 'transparent' : '#ffffff04',
+                        borderBottom: '1px solid var(--color-border-subtle)',
+                        background: i % 2 === 0 ? 'transparent' : 'var(--color-bg-elevated)',
                       }}>
-                        <td style={{ padding: '7px 12px', fontFamily: 'monospace', color: '#94a3b8' }}>
+                        <td style={{
+                          padding: 'var(--space-xs) var(--space-md)',
+                          fontFamily: 'var(--font-hud)',
+                          color: 'var(--color-text-secondary)',
+                          letterSpacing: '0.5px',
+                        }}>
                           {d.unit_name ?? d.entity_id.slice(0, 8).toUpperCase()}
                         </td>
-                        <td style={{ padding: '7px 12px' }}>
+                        <td style={{ padding: 'var(--space-xs) var(--space-md)' }}>
                           <span style={{
-                            fontSize: 9, fontWeight: 700,
-                            color: d.entity_type === 'hostile' ? '#E24B4A'
-                              : d.entity_type === 'ambiguous' ? '#EF9F27'
-                              : d.entity_type === 'friendly' ? '#378ADD' : '#888780',
+                            fontSize: 9,
+                            fontWeight: 700,
+                            fontFamily: 'var(--font-hud)',
+                            color: d.entity_type === 'hostile'   ? 'var(--color-hostile)'
+                                 : d.entity_type === 'ambiguous' ? 'var(--color-ambiguous)'
+                                 : d.entity_type === 'friendly'  ? 'var(--color-friendly)'
+                                 : 'var(--color-civilian)',
                           }}>
                             {d.entity_type.toUpperCase().slice(0, 3)}
                           </span>
                         </td>
-                        <td style={{ padding: '7px 12px' }}>
+                        <td style={{ padding: 'var(--space-xs) var(--space-md)' }}>
                           <span style={{
-                            fontSize: 9, fontWeight: 700,
-                            color: DECISION_COLOR[d.decision] ?? '#888780',
+                            fontSize: 9,
+                            fontWeight: 700,
+                            fontFamily: 'var(--font-hud)',
+                            color: DECISION_COLOR[d.decision] ?? 'var(--color-civilian)',
                             background: (DECISION_COLOR[d.decision] ?? '#888780') + '18',
                             border: `1px solid ${(DECISION_COLOR[d.decision] ?? '#888780')}33`,
-                            borderRadius: 3, padding: '1px 5px', letterSpacing: 0.5,
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '1px 5px',
+                            letterSpacing: 0.5,
                           }}>
                             {d.decision.replace('_', ' ').toUpperCase()}
                           </span>
                         </td>
-                        <td style={{ padding: '7px 12px', color: '#64748b', fontFamily: 'monospace' }}>
+                        <td style={{
+                          padding: 'var(--space-xs) var(--space-md)',
+                          color: 'var(--color-text-secondary)',
+                          fontFamily: 'var(--font-data)',
+                        }}>
                           {(d.classifier_score * 100).toFixed(0)}%
                         </td>
-                        <td style={{ padding: '7px 12px' }}>
-                          <span style={{ color: d.followed_ai ? '#22c55e' : '#E24B4A', fontSize: 12 }}>
-                            {d.followed_ai ? '✓' : '✕'}
+                        <td style={{ padding: 'var(--space-xs) var(--space-md)' }}>
+                          <span style={{
+                            color: d.followed_ai ? '#22c55e' : '#E24B4A',
+                            fontFamily: 'var(--font-hud)',
+                            fontSize: 11,
+                            fontWeight: 700,
+                          }}>
+                            {d.followed_ai ? 'YES' : 'NO'}
                           </span>
                         </td>
-                        <td style={{ padding: '7px 12px', color: '#4a5568' }}>
+                        <td style={{
+                          padding: 'var(--space-xs) var(--space-md)',
+                          color: 'var(--color-text-muted)',
+                          fontFamily: 'var(--font-data)',
+                        }}>
                           {Math.floor(d.sim_time)}s
                         </td>
                       </tr>

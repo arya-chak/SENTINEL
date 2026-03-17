@@ -38,7 +38,7 @@ function App() {
       height: '100vh',
       width: '100vw',
       overflow: 'hidden',
-      background: '#0a0a0f',
+      background: 'var(--color-bg-void)',
     }}>
       <Header />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

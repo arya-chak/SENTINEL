@@ -1,20 +1,167 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Fira+Code:wght@400;500&display=swap');
+
+/* ─────────────────────────────────────────────────────────────
+   SENTINEL Design Tokens
+   Source of truth: design-system/sentinel/MASTER.md
+   All components must reference these variables — no hardcoded hex.
+   ───────────────────────────────────────────────────────────── */
 
 :root {
-  --hostile:   #E24B4A;
-  --friendly:  #378ADD;
-  --civilian:  #888780;
-  --ambiguous: #EF9F27;
+
+  /* Background layers */
+  --color-bg-void:     #0a0a0f;   /* body background, outermost shell */
+  --color-bg-surface:  #0f0f1a;   /* panel backgrounds (Header, TargetQueue, DossierPanel) */
+  --color-bg-elevated: #141428;   /* cards, queue rows, input backgrounds */
+  --color-bg-overlay:  #1e2035;   /* borders, dividers, hover backgrounds */
+
+  /* Text */
+  --color-text-primary:   #e2e8f0;  /* main body text, entity names */
+  --color-text-secondary: #94a3b8;  /* labels, metadata, timestamps */
+  --color-text-muted:     #4a5568;  /* disabled states, tertiary info */
+  --color-text-inverse:   #0a0a0f;  /* text on colored (accent/hostile) backgrounds */
+
+  /* Accent */
+  --color-accent:     #378ADD;   /* SENTINEL wordmark, selected states, links, friendly units */
+  --color-accent-dim: #1e4a7a;   /* accent hover backgrounds, focus rings */
+
+  /* Entity semantic colors — map directly to classifier output */
+  --color-hostile:   #E24B4A;
+  --color-ambiguous: #EF9F27;
+  --color-friendly:  #378ADD;   /* same as accent intentionally */
+  --color-civilian:  #888780;
+
+  /* Status */
+  --color-status-live:    #22c55e;  /* LIVE indicator dot */
+  --color-status-warning: #EF9F27;  /* countdown under 10s — same as ambiguous */
+  --color-status-danger:  #E24B4A;  /* critical alert — same as hostile */
+
+  /* Borders */
+  --color-border:        #1e2035;  /* panel edges, card borders */
+  --color-border-subtle: #141428;  /* inner dividers */
+
+  /* Typography */
+  --font-hud:  'Share Tech Mono', monospace;  /* wordmark, status labels, entity IDs */
+  --font-body: 'Inter Variable', 'Inter', sans-serif;
+  --font-data: 'Fira Code', 'Fira Mono', monospace;  /* scores, coordinates, raw values */
+
+  /* Type scale */
+  --text-wordmark:  14px;  /* SENTINEL logo */
+  --text-label:     11px;  /* status badges, entity type labels */
+  --text-body:      13px;  /* queue rows, dossier body */
+  --text-body-sm:   12px;  /* secondary metadata, timestamps */
+  --text-data:      12px;  /* scores, coordinates */
+  --text-heading:   13px;  /* panel section headings */
+
+  /* Spacing */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  12px;
+  --space-lg:  16px;
+  --space-xl:  24px;
+  --space-2xl: 32px;
+
+  /* Layout */
+  --header-height:      48px;
+  --queue-width:        280px;
+  --dossier-max-height: 320px;
+
+  /* Borders */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+
+  /* Transitions */
+  --transition-fast:   150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow:   300ms ease;
 }
 
-* {
+/* ─────────────────────────────────────────────────────────────
+   Reset
+   ───────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Base
+   ───────────────────────────────────────────────────────────── */
+
 body {
   margin: 0;
-  background: #0a0a0f;
-  color: #e2e8f0;
-  font-family: 'Inter', sans-serif;
+  background: var(--color-bg-void);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: 1.5;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Scrollbars — dark minimal style for all scrollable panels
+   ───────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-bg-overlay);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Focus — visible but minimal
+   ───────────────────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Reduced motion
+   ───────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LIVE indicator pulse animation
+   ───────────────────────────────────────────────────────────── */
+
+@keyframes sentinel-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+.sentinel-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-status-live);
+  animation: sentinel-pulse 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sentinel-live-dot {
+    animation: none;
+  }
 }

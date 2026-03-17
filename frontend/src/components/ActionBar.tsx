@@ -9,10 +9,10 @@ interface Props {
 }
 
 function ActionButton({
-  label, color, onClick, disabled = false
+  label, colorHex, onClick, disabled = false
 }: {
   label: string
-  color: string
+  colorHex: string
   onClick: () => void
   disabled?: boolean
 }) {
@@ -21,14 +21,29 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       style={{
-        background: disabled ? '#1a1a2e' : color + '18',
-        border: `1px solid ${disabled ? '#1e2035' : color + '66'}`,
-        color: disabled ? '#4a5568' : color,
-        borderRadius: 4, padding: '8px 12px',
-        fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
+        background: disabled ? 'var(--color-bg-elevated)' : colorHex + '18',
+        border: `1px solid ${disabled ? 'var(--color-border)' : colorHex + '66'}`,
+        color: disabled ? 'var(--color-text-muted)' : colorHex,
+        borderRadius: 'var(--radius-md)',
+        padding: 'var(--space-sm) var(--space-md)',
+        fontSize: 'var(--text-label)',
+        fontWeight: 700,
+        letterSpacing: 0.5,
+        fontFamily: 'var(--font-hud)',
         cursor: disabled ? 'default' : 'pointer',
-        width: '100%', textAlign: 'left',
-        transition: 'all 0.15s',
+        width: '100%',
+        textAlign: 'left',
+        transition: `all var(--transition-fast)`,
+      }}
+      onMouseEnter={e => {
+        if (!disabled) {
+          (e.currentTarget as HTMLButtonElement).style.background = colorHex + '28'
+        }
+      }}
+      onMouseLeave={e => {
+        if (!disabled) {
+          (e.currentTarget as HTMLButtonElement).style.background = colorHex + '18'
+        }
       }}
     >
       {label}
@@ -37,9 +52,9 @@ function ActionButton({
 }
 
 export default function ActionBar({ entity, classifierScore }: Props) {
-  const setSelected = useSentinelStore(s => s.setSelected)
-  const entities = useSentinelStore(s => s.entities)
-  const queryClient = useQueryClient()
+  const setSelected  = useSentinelStore(s => s.setSelected)
+  const entities     = useSentinelStore(s => s.entities)
+  const queryClient  = useQueryClient()
 
   async function decide(decision: string) {
     await api.decide(entity.id, decision, classifierScore)
@@ -52,10 +67,9 @@ export default function ActionBar({ entity, classifierScore }: Props) {
     queryClient.invalidateQueries({ queryKey: ['entities'] })
   }
 
-  const isFriendly = entity.entity_type === 'friendly'
+  const isFriendly      = entity.entity_type === 'friendly'
   const isIncapacitated = entity.status === 'incapacitated'
 
-  // Find hostile targets for advance_clear
   const hostileTargets = entities.filter(
     e => (e.entity_type === 'hostile' || e.entity_type === 'ambiguous')
       && e.status !== 'neutralized'
@@ -63,77 +77,116 @@ export default function ActionBar({ entity, classifierScore }: Props) {
 
   return (
     <div style={{
-      width: 200, flexShrink: 0, padding: '10px 14px',
-      display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto',
+      width: 200,
+      flexShrink: 0,
+      padding: 'var(--space-sm) var(--space-md)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 'var(--space-xs)',
+      overflowY: 'auto',
     }}>
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#4a5568', marginBottom: 4 }}>
+
+      {/* Section heading */}
+      <div style={{
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: 2,
+        color: 'var(--color-text-muted)',
+        fontFamily: 'var(--font-hud)',
+        marginBottom: 'var(--space-xs)',
+      }}>
         ACTIONS
       </div>
 
+      {/* Non-friendly: engagement decisions */}
       {!isFriendly && (
         <>
           <ActionButton
-            label="✓ APPROVE ENGAGEMENT"
-            color="#E24B4A"
+            label="APPROVE ENGAGEMENT"
+            colorHex="#E24B4A"
             onClick={() => decide('approve')}
           />
           <ActionButton
-            label="✕ DENY ENGAGEMENT"
-            color="#22c55e"
+            label="DENY ENGAGEMENT"
+            colorHex="#22c55e"
             onClick={() => decide('deny')}
           />
           <ActionButton
-            label="⟳ REQUEST MORE INTEL"
-            color="#EF9F27"
+            label="REQUEST MORE INTEL"
+            colorHex="#EF9F27"
             onClick={() => decide('more_intel')}
           />
         </>
       )}
 
+      {/* Friendly: tactical commands */}
       {isFriendly && (
         <>
           <ActionButton
-            label="↩ FALL BACK"
-            color="#EF9F27"
+            label="FALL BACK"
+            colorHex="#EF9F27"
             onClick={() => command('fall_back')}
             disabled={isIncapacitated}
           />
           <ActionButton
-            label="⟳ HOLD POSITION"
-            color="#378ADD"
+            label="HOLD POSITION"
+            colorHex="#378ADD"
             onClick={() => command('hold')}
             disabled={isIncapacitated}
           />
           <ActionButton
-            label="↗ REQUEST STATUS"
-            color="#888780"
+            label="REQUEST STATUS"
+            colorHex="#888780"
             onClick={() => command('request_status')}
             disabled={isIncapacitated}
           />
 
-          {/* Advance & Clear — pick from hostile targets */}
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: '#4a5568', marginTop: 4 }}>
+          {/* Advance & Clear target selector */}
+          <div style={{
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: 1,
+            color: 'var(--color-text-muted)',
+            fontFamily: 'var(--font-hud)',
+            marginTop: 'var(--space-sm)',
+            marginBottom: 2,
+          }}>
             ADVANCE & CLEAR
           </div>
+
           {hostileTargets.length === 0 ? (
-            <span style={{ fontSize: 10, color: '#4a5568' }}>No targets available</span>
+            <span style={{
+              fontSize: 'var(--text-label)',
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-hud)',
+            }}>
+              No targets available
+            </span>
           ) : (
             hostileTargets.slice(0, 4).map(t => (
               <ActionButton
                 key={t.id}
-                label={`→ ${t.unit_name ?? t.id.slice(0, 6).toUpperCase()}`}
-                color="#E24B4A"
+                label={t.unit_name ?? t.id.slice(0, 6).toUpperCase()}
+                colorHex="#E24B4A"
                 onClick={() => command('advance_clear', t.id)}
                 disabled={isIncapacitated}
               />
             ))
           )}
 
+          {/* Incapacitated warning */}
           {isIncapacitated && (
             <div style={{
-              fontSize: 10, color: '#E24B4A', marginTop: 4,
-              background: '#E24B4A18', border: '1px solid #E24B4A33',
-              borderRadius: 4, padding: '6px 8px',
+              fontSize: 'var(--text-label)',
+              color: 'var(--color-hostile)',
+              fontFamily: 'var(--font-hud)',
+              marginTop: 'var(--space-xs)',
+              background: '#E24B4A18',
+              border: '1px solid #E24B4A33',
+              borderRadius: 'var(--radius-md)',
+              padding: 'var(--space-xs) var(--space-sm)',
+              letterSpacing: '0.5px',
+              lineHeight: 1.4,
             }}>
               UNIT INCAPACITATED — cannot receive commands
             </div>

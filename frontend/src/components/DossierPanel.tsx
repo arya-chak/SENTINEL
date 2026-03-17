@@ -8,16 +8,23 @@ import ClassifierResult from './ClassifierResult'
 import LLMExplainer from './LLMExplainer'
 import ActionBar from './ActionBar'
 
+const TYPE_COLOR_HEX: Record<string, string> = {
+  hostile:   '#E24B4A',
+  ambiguous: '#EF9F27',
+  friendly:  '#378ADD',
+  civilian:  '#888780',
+}
+
 export default function DossierPanel() {
   const selectedEntityId = useSentinelStore(s => s.selectedEntityId)
-  const entities = useSentinelStore(s => s.entities)
-  const setSelected = useSentinelStore(s => s.setSelected)
+  const entities         = useSentinelStore(s => s.entities)
+  const setSelected      = useSentinelStore(s => s.setSelected)
 
   const entity = entities.find(e => e.id === selectedEntityId) ?? null
 
-  const [llmResult, setLlmResult] = useState<any>(null)
+  const [llmResult,  setLlmResult]  = useState<any>(null)
   const [llmLoading, setLlmLoading] = useState(false)
-  const [llmError, setLlmError] = useState<string | null>(null)
+  const [llmError,   setLlmError]   = useState<string | null>(null)
 
   // Reset LLM state whenever selected entity changes
   useEffect(() => {
@@ -28,8 +35,8 @@ export default function DossierPanel() {
 
   const { data: scoreData, isLoading: scoreLoading } = useQuery({
     queryKey: ['score', selectedEntityId],
-    queryFn: () => api.getScore(selectedEntityId!),
-    enabled: !!selectedEntityId,
+    queryFn:  () => api.getScore(selectedEntityId!),
+    enabled:  !!selectedEntityId,
   })
 
   async function handleExplain() {
@@ -46,63 +53,103 @@ export default function DossierPanel() {
     }
   }
 
-  const TYPE_COLOR: Record<string, string> = {
-    hostile:   '#E24B4A',
-    ambiguous: '#EF9F27',
-    friendly:  '#378ADD',
-    civilian:  '#888780',
-  }
+  const entityColor = TYPE_COLOR_HEX[entity?.entity_type ?? ''] ?? '#888780'
 
   return (
     <AnimatePresence>
       {entity && (
         <motion.div
           key={entity.id}
-          initial={{ y: 300, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 300, opacity: 0 }}
+          initial={{ y: 200, opacity: 0 }}
+          animate={{ y: 0,   opacity: 1 }}
+          exit={{    y: 200, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           style={{
-            height: 300,
-            background: '#0d0d18',
-            borderTop: `2px solid ${TYPE_COLOR[entity.entity_type] ?? '#888780'}`,
+            height: 'var(--dossier-max-height)',
+            background: 'var(--color-bg-surface)',
+            borderTop: `2px solid ${entityColor}`,
             display: 'flex',
             flexDirection: 'column',
             flexShrink: 0,
             overflow: 'hidden',
           }}
         >
-          {/* Dossier header */}
+          {/* Dossier header bar */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '8px 16px',
-            borderBottom: '1px solid #1e2035',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-sm)',
+            padding: 'var(--space-sm) var(--space-lg)',
+            borderBottom: '1px solid var(--color-border)',
             flexShrink: 0,
           }}>
+
+            {/* Entity type badge */}
             <span style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: 1,
-              color: TYPE_COLOR[entity.entity_type],
-              background: TYPE_COLOR[entity.entity_type] + '22',
-              border: `1px solid ${TYPE_COLOR[entity.entity_type]}44`,
-              borderRadius: 3, padding: '2px 6px',
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: 1,
+              color: entityColor,
+              background: entityColor + '22',
+              border: `1px solid ${entityColor}44`,
+              borderRadius: 'var(--radius-sm)',
+              padding: '2px 6px',
+              fontFamily: 'var(--font-hud)',
             }}>
               {entity.entity_type.toUpperCase()}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', fontFamily: 'monospace' }}>
+
+            {/* Entity name / ID */}
+            <span style={{
+              fontSize: 'var(--text-heading)',
+              fontWeight: 600,
+              color: 'var(--color-text-primary)',
+              fontFamily: 'var(--font-hud)',
+              letterSpacing: '0.5px',
+            }}>
               {entity.unit_name ?? entity.id.slice(0, 8).toUpperCase()}
             </span>
-            <span style={{ fontSize: 11, color: '#4a5568' }}>
-              {entity.status.replace('_', ' ').toUpperCase()}
+
+            {/* Status */}
+            <span style={{
+              fontSize: 'var(--text-label)',
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-hud)',
+              letterSpacing: '0.5px',
+            }}>
+              {entity.status.replace(/_/g, ' ').toUpperCase()}
             </span>
-            <span style={{ fontSize: 11, color: '#4a5568', marginLeft: 8 }}>
-              {entity.lat.toFixed(4)}°N {entity.lon.toFixed(4)}°E
+
+            {/* Coordinates */}
+            <span style={{
+              fontSize: 'var(--text-data)',
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-data)',
+              marginLeft: 'var(--space-xs)',
+            }}>
+              {entity.lat.toFixed(4)}°N&nbsp;&nbsp;{entity.lon.toFixed(4)}°E
             </span>
+
+            {/* Close button */}
             <button
               onClick={() => setSelected(null)}
               style={{
-                marginLeft: 'auto', background: 'transparent',
-                border: 'none', color: '#4a5568', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', padding: 4,
+                marginLeft: 'auto',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: 'var(--space-xs)',
+                borderRadius: 'var(--radius-sm)',
+                transition: 'color var(--transition-fast)',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-primary)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-muted)'
               }}
             >
               <X size={14} />
@@ -110,9 +157,7 @@ export default function DossierPanel() {
           </div>
 
           {/* Three-column body */}
-          <div style={{
-            display: 'flex', flex: 1, overflow: 'hidden',
-          }}>
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <ClassifierResult scoreData={scoreData} loading={scoreLoading} />
             <LLMExplainer
               llmResult={llmResult}

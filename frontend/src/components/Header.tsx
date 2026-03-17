@@ -6,65 +6,116 @@ export default function Header() {
   const navigate = useNavigate()
 
   const dot = (color: string, label: string, count: number) => (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', fontSize: 'var(--text-label)' }}>
       <span style={{
-        width: 8, height: 8, borderRadius: '50%',
+        width: 7, height: 7, borderRadius: '50%',
         background: color, flexShrink: 0,
       }} />
-      <span style={{ color: '#94a3b8' }}>{label}</span>
-      <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{count}</span>
+      <span style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-hud)', letterSpacing: '0.5px' }}>{label}</span>
+      <span style={{ color: 'var(--color-text-primary)', fontWeight: 600, fontFamily: 'var(--font-hud)' }}>{count}</span>
     </span>
   )
 
   return (
     <div style={{
-      height: 48,
-      background: '#0f0f1a',
-      borderBottom: '1px solid #1e2035',
+      height: 'var(--header-height)',
+      background: 'var(--color-bg-surface)',
+      borderBottom: '1px solid var(--color-border)',
       display: 'flex',
       alignItems: 'center',
-      padding: '0 16px',
-      gap: 24,
+      padding: '0 var(--space-lg)',
+      gap: 'var(--space-xl)',
       flexShrink: 0,
     }}>
-      <span style={{ color: '#378ADD', fontWeight: 700, letterSpacing: 2, fontSize: 14 }}>
+
+      {/* Wordmark */}
+      <span style={{
+        color: 'var(--color-accent)',
+        fontFamily: 'var(--font-hud)',
+        fontSize: 'var(--text-wordmark)',
+        fontWeight: 700,
+        letterSpacing: 3,
+      }}>
         SENTINEL
       </span>
-      <span style={{ color: '#2d3748', fontSize: 12 }}>
+
+      {/* Subtitle */}
+      <span style={{
+        color: 'var(--color-text-muted)',
+        fontFamily: 'var(--font-hud)',
+        fontSize: 10,
+        letterSpacing: '0.5px',
+      }}>
         Simulated ENtity Threat Intelligence &amp; Engagement Layer
       </span>
 
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 20 }}>
+      {/* Right side */}
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-lg)' }}>
         {simState ? (
           <>
-            {dot('#E24B4A', 'HOSTILE',   simState.hostile_count)}
-            {dot('#EF9F27', 'AMBIGUOUS', simState.ambiguous_count)}
-            {dot('#378ADD', 'FRIENDLY',  simState.friendly_count)}
-            {dot('#888780', 'CIVILIAN',  simState.civilian_count)}
-            <span style={{ color: '#4a5568', fontSize: 11, marginLeft: 8 }}>
+            {dot('var(--color-hostile)',   'HOSTILE',   simState.hostile_count)}
+            {dot('var(--color-ambiguous)', 'AMBIGUOUS', simState.ambiguous_count)}
+            {dot('var(--color-friendly)',  'FRIENDLY',  simState.friendly_count)}
+            {dot('var(--color-civilian)',  'CIVILIAN',  simState.civilian_count)}
+
+            <span style={{
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-hud)',
+              fontSize: 'var(--text-label)',
+              marginLeft: 'var(--space-xs)',
+              letterSpacing: '0.5px',
+            }}>
               T+{Math.floor(simState.sim_time)}s
             </span>
+
+            {/* LIVE / PAUSED indicator */}
             <span style={{
-              fontSize: 11, fontWeight: 600, letterSpacing: 1,
-              color: simState.running ? '#22c55e' : '#ef4444',
+              display: 'flex', alignItems: 'center', gap: 'var(--space-xs)',
+              fontFamily: 'var(--font-hud)',
+              fontSize: 'var(--text-label)',
+              fontWeight: 600,
+              letterSpacing: 1,
+              color: simState.running ? 'var(--color-status-live)' : 'var(--color-status-danger)',
             }}>
-              {simState.running ? '● LIVE' : '○ PAUSED'}
+              {simState.running
+                ? <><span className="sentinel-live-dot" />LIVE</>
+                : <>○ PAUSED</>
+              }
             </span>
           </>
         ) : (
-          <span style={{ color: '#4a5568', fontSize: 11 }}>CONNECTING...</span>
+          <span style={{
+            color: 'var(--color-text-muted)',
+            fontFamily: 'var(--font-hud)',
+            fontSize: 'var(--text-label)',
+            letterSpacing: 1,
+          }}>
+            CONNECTING...
+          </span>
         )}
 
         <button
           onClick={() => navigate('/debrief')}
           style={{
-            background: '#1e2035',
-            border: '1px solid #2d3748',
-            color: '#94a3b8',
-            borderRadius: 4, padding: '5px 12px',
-            fontSize: 11, fontWeight: 600,
-            cursor: 'pointer', letterSpacing: 0.5,
-            marginLeft: 8,
+            background: 'var(--color-bg-overlay)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text-secondary)',
+            borderRadius: 'var(--radius-md)',
+            padding: '5px 12px',
+            fontFamily: 'var(--font-hud)',
+            fontSize: 'var(--text-label)',
+            fontWeight: 600,
+            cursor: 'pointer',
+            letterSpacing: 1,
+            transition: 'border-color var(--transition-fast), color var(--transition-fast)',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-accent)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-accent)'
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-secondary)'
           }}
         >
           DEBRIEF
