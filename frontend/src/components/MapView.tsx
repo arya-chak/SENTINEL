@@ -11,6 +11,33 @@ const TYPE_COLOR: Record<string, string> = {
   civilian:  '#888780',
 }
 
+function trailsGeoJSON(
+  entities: Entity[],
+  history: Record<string, Array<{ lat: number; lon: number }>>,
+  selectedId: string | null,
+) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: entities
+      .map((e) => {
+        const pts = history[e.id]
+        if (!pts || pts.length < 2) return null
+        return {
+          type: 'Feature' as const,
+          geometry: {
+            type: 'LineString' as const,
+            coordinates: pts.map((p) => [p.lon, p.lat]),
+          },
+          properties: {
+            color:    TYPE_COLOR[e.entity_type] ?? '#888780',
+            selected: e.id === selectedId ? 1 : 0,
+          },
+        }
+      })
+      .filter((f): f is NonNullable<typeof f> => f !== null),
+  }
+}
+
 function entitiesToGeoJSON(entities: Entity[], selectedId: string | null) {
   return {
     type: 'FeatureCollection' as const,
@@ -53,6 +80,21 @@ function friendlyArrowsGeoJSON(entities: Entity[]) {
   }
 }
 
+const trailLayer: LayerSpecification = {
+  id: 'entity-trails',
+  type: 'line',
+  source: 'entity-trails',
+  paint: {
+    'line-color':   ['get', 'color'],
+    'line-width':   1.5,
+    'line-opacity': ['case', ['==', ['get', 'selected'], 1], 0.7, 0.25],
+  },
+  layout: {
+    'line-cap':  'round',
+    'line-join': 'round',
+  },
+}
+
 const circleLayer: LayerSpecification = {
   id: 'entities-circle',
   type: 'circle',
@@ -80,10 +122,12 @@ const arrowLayer: LayerSpecification = {
 export default function MapView() {
   const entities = useSentinelStore(s => s.entities)
   const selectedId = useSentinelStore(s => s.selectedEntityId)
+  const positionHistory = useSentinelStore(s => s.positionHistory)
   const setSelected = useSentinelStore(s => s.setSelected)
 
   const geojson = entitiesToGeoJSON(entities, selectedId)
   const arrowsGeojson = friendlyArrowsGeoJSON(entities)
+  const trailsGeojson  = trailsGeoJSON(entities, positionHistory, selectedId)
 
   function handleClick(e: MapLayerMouseEvent) {
     const features = e.features
@@ -108,6 +152,10 @@ export default function MapView() {
         onClick={handleClick}
         interactiveLayerIds={['entities-circle']}
       >
+        <Source id="entity-trails" type="geojson" data={trailsGeojson}>
+          <Layer {...trailLayer} />
+        </Source>
+
         <Source id="friendly-arrows" type="geojson" data={arrowsGeojson}>
           <Layer {...arrowLayer} />
         </Source>

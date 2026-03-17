@@ -165,3 +165,8 @@ body {
     animation: none;
   }
 }
+
+@keyframes sentinel-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}

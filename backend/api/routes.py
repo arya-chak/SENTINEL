@@ -3,6 +3,8 @@
 # Exposes simulation state and operator actions as HTTP endpoints.
 # The React frontend communicates exclusively through these routes.
 
+from fastapi.responses import StreamingResponse
+from backend.api.explainer import explain_entity, stream_explain_entity
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -315,3 +317,26 @@ def explain(entity_id: str):
         raise HTTPException(status_code=404, detail="Entity not found")
 
     return explain_entity(entity)
+
+# ── Streaming LLM Explainer Route ─────────────────────────────────────────────
+
+@router.get("/entities/{entity_id}/explain/stream")
+async def explain_stream(entity_id: str):
+    """
+    Streams the LLM explanation as Server-Sent Events.
+    Phase 1: prose reasoning tokens arrive continuously.
+    Phase 2: a single [STRUCTURED] event delivers the full JSON result.
+    Phase 3: [DONE] signals the stream is complete.
+    """
+    entity = state.get_entity(entity_id)
+    if not entity:
+        raise HTTPException(status_code=404, detail="Entity not found")
+
+    return StreamingResponse(
+        stream_explain_entity(entity),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",   # disables nginx buffering if behind a proxy
+        },
+    )

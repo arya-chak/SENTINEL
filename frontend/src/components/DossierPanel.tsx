@@ -22,36 +22,11 @@ export default function DossierPanel() {
 
   const entity = entities.find(e => e.id === selectedEntityId) ?? null
 
-  const [llmResult,  setLlmResult]  = useState<any>(null)
-  const [llmLoading, setLlmLoading] = useState(false)
-  const [llmError,   setLlmError]   = useState<string | null>(null)
-
-  // Reset LLM state whenever selected entity changes
-  useEffect(() => {
-    setLlmResult(null)
-    setLlmLoading(false)
-    setLlmError(null)
-  }, [selectedEntityId])
-
   const { data: scoreData, isLoading: scoreLoading } = useQuery({
     queryKey: ['score', selectedEntityId],
     queryFn:  () => api.getScore(selectedEntityId!),
     enabled:  !!selectedEntityId,
   })
-
-  async function handleExplain() {
-    if (!selectedEntityId) return
-    setLlmLoading(true)
-    setLlmError(null)
-    try {
-      const result = await api.getExplain(selectedEntityId)
-      setLlmResult(result)
-    } catch {
-      setLlmError('Failed to fetch explanation')
-    } finally {
-      setLlmLoading(false)
-    }
-  }
 
   const entityColor = TYPE_COLOR_HEX[entity?.entity_type ?? ''] ?? '#888780'
 
@@ -159,12 +134,7 @@ export default function DossierPanel() {
           {/* Three-column body */}
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <ClassifierResult scoreData={scoreData} loading={scoreLoading} />
-            <LLMExplainer
-              llmResult={llmResult}
-              loading={llmLoading}
-              error={llmError}
-              onExplain={handleExplain}
-            />
+            <LLMExplainer entityId={selectedEntityId!} />
             <ActionBar
               entity={entity}
               classifierScore={scoreData?.threat_score ?? 0}
