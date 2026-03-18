@@ -6,7 +6,7 @@
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier , IsolationForest
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report
@@ -193,13 +193,72 @@ class ThreatClassifier:
             "feature_importance":  importances,
         }
 
+# ── Anomaly Detector ──────────────────────────────────────────────────────────
+# Isolation Forest trained on civilian + friendly profiles only.
+# It learns what "normal" looks like so anything statistically unusual
+# registers as anomalous — regardless of what the RF classifier labels it.
+# This catches novel threat combinations the RF has never seen.
+
+class AnomalyDetector:
+    """
+    Wraps an IsolationForest trained on non-threat entity features only.
+    Scores entities by how far they deviate from the normal population baseline.
+    """
+
+    THRESHOLD = -0.05  # decision_function values below this are flagged
+
+    def __init__(self):
+        self.model = IsolationForest(
+            n_estimators=100,
+            contamination=0.05,  # expect ~5% anomalies in the normal population
+            random_state=42,
+        )
+        self.trained = False
+
+    def train(self, n_samples: int = 1000):
+        """
+        Train on civilian and friendly entity features only.
+        Hostile and ambiguous entities are excluded — we want the model
+        to learn what normal looks like, not what threats look like.
+        """
+        X = []
+        per_type = n_samples // 2
+
+        for entity_type in (EntityType.CIVILIAN, EntityType.FRIENDLY):
+            for _ in range(per_type):
+                entity = spawn_entity(entity_type, sim_time=0.0)
+                X.append(extract_features(entity))
+
+        self.model.fit(np.array(X))
+        self.trained = True
+        print(f"Anomaly detector trained on {len(X)} non-threat samples")
+
+    def score(self, entity: Entity) -> dict:
+        """
+        Returns:
+          anomaly_score : float — decision_function output, roughly [-0.5, 0.5]
+                          More negative = more anomalous vs the normal baseline
+          anomaly_flag  : bool  — True when score falls below THRESHOLD
+        """
+        if not self.trained:
+            return {"anomaly_score": 0.0, "anomaly_flag": False}
+
+        features = extract_features(entity).reshape(1, -1)
+        score    = float(self.model.decision_function(features)[0])
+        flagged  = score < self.THRESHOLD
+
+        return {
+            "anomaly_score": round(score, 4),
+            "anomaly_flag":  flagged,
+        }
 
 # ── Global classifier instance ────────────────────────────────────────────────
 # Trained once at server startup and reused for all scoring requests.
 
 classifier = ThreatClassifier()
-
+anomaly_detector = AnomalyDetector()
 
 def train_classifier():
     """Called at FastAPI startup to train the classifier before serving requests."""
     classifier.train(n_samples=2000, verbose=True)
+    anomaly_detector.train(n_samples=1000)

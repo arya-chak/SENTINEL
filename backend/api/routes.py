@@ -8,7 +8,7 @@ from backend.api.explainer import explain_entity, stream_explain_entity
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-
+from backend.classifier.model import classifier, anomaly_detector
 from backend.simulation.loop import state
 from backend.simulation.engine import (
     EntityType, EntityStatus, FriendlyCommand
@@ -289,16 +289,15 @@ from backend.classifier.model import classifier
 
 @router.get("/entities/{entity_id}/score")
 def score_entity(entity_id: str):
-    """
-    Runs the threat classifier on a single entity and returns
-    threat_score, confidence, label, and feature importances.
-    Called when the operator opens a target dossier.
-    """
     entity = state.get_entity(entity_id)
     if not entity:
         raise HTTPException(status_code=404, detail="Entity not found")
 
-    return classifier.score(entity)
+    result         = classifier.score(entity)
+    anomaly_result = anomaly_detector.score(entity)
+
+    # Merge anomaly fields into the score response
+    return {**result, **anomaly_result}
 
 # ── LLM Explainer Route ───────────────────────────────────────────────────────
 

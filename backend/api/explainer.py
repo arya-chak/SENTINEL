@@ -1,50 +1,42 @@
 # explainer.py
-# LLM Explainer for SENTINEL
-# Sends entity intelligence reports and classifier scores to Claude,
-# which reasons through the evidence and returns a structured explanation.
-# This is the human-in-the-loop AI layer — the operator reads this reasoning
-# before making an approve/deny decision.
-
 import os
 import json
 import anthropic
-# API key is loaded from the shell environment
 
 from backend.simulation.engine import Entity, EntityType
-from backend.classifier.model import classifier
-
-# Run: export ANTHROPIC_API_KEY='your-key' before starting the server
-
-# ── Anthropic Client ──────────────────────────────────────────────────────────
+from backend.classifier.model import classifier, anomaly_detector 
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 
-# ── Prompt Builder ────────────────────────────────────────────────────────────
-# Constructs the prompt sent to Claude for each entity explanation request.
-# The prompt is designed to make Claude reason carefully and hedge appropriately
-# rather than producing overconfident assessments.
-
 def _build_prompt(entity: Entity, classifier_result: dict) -> str:
-    """
-    Builds a structured prompt combining the entity's intel report
-    with the classifier's numerical assessment.
-    """
-
-    # Format feature importances as a readable list
     top_features = sorted(
         classifier_result["feature_importance"].items(),
         key=lambda x: x[1],
         reverse=True
-    )[:5]  # Top 5 most important features
+    )[:5]
 
     feature_lines = "\n".join(
         f"  - {name.replace('_', ' ')}: {round(imp * 100, 1)}% importance"
         for name, imp in top_features
     )
 
-    # Format classifier probabilities
     probs = classifier_result["probabilities"]
+
+    # ── Anomaly block — only injected when flag is set ────────────────────────
+    anomaly_block = ""
+    if classifier_result.get("anomaly_flag"):
+        anomaly_block = f"""
+---
+
+ANOMALY DETECTION:
+This entity's feature combination is statistically unusual compared to the civilian
+and friendly baseline population (anomaly score: {classifier_result.get('anomaly_score', 'N/A')}).
+This is an independent signal — treat it separately from the classifier label.
+An entity can score low on the threat classifier but still be anomalous if its
+feature combination has never been seen in normal population samples.
+Consider what might explain the anomaly and whether it affects your recommendation.
+"""
 
     prompt = f"""You are an AI analyst assistant in a tactical command and control system called SENTINEL.
 Your role is to help a human operator assess potential threats on the battlefield.
@@ -75,7 +67,7 @@ CLASSIFIER ASSESSMENT:
     Ambiguous:  {probs["ambiguous"]}
 - Top features driving this score:
 {feature_lines}
-
+{anomaly_block}
 ---
 
 Respond in the following JSON format exactly — no preamble, no markdown, just the JSON object:
@@ -98,24 +90,11 @@ Respond in the following JSON format exactly — no preamble, no markdown, just 
     return prompt
 
 
-# ── LLM Explainer ─────────────────────────────────────────────────────────────
-
 def explain_entity(entity: Entity) -> dict:
-    """
-    Runs the classifier on the entity, then sends the intel report
-    and classifier results to Claude for natural language reasoning.
-
-    Returns a structured explanation dict containing:
-    - summary
-    - reasoning chain
-    - whether LLM agrees with classifier
-    - recommended action
-    - civilian risk assessment
-    - raw classifier result (for disagreement detection)
-    """
-
-    # ── Step 1: Get classifier score ──────────────────────────────────────────
+    # ── Step 1: Get classifier + anomaly scores ───────────────────────────────
     classifier_result = classifier.score(entity)
+    anomaly_result    = anomaly_detector.score(entity)
+    classifier_result = {**classifier_result, **anomaly_result}  # ← merge
 
     # ── Step 2: Build and send prompt to Claude ───────────────────────────────
     prompt = _build_prompt(entity, classifier_result)
@@ -123,9 +102,7 @@ def explain_entity(entity: Entity) -> dict:
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1024,
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
+        messages=[{"role": "user", "content": prompt}]
     )
 
     raw_response = message.content[0].text
@@ -133,19 +110,16 @@ def explain_entity(entity: Entity) -> dict:
     # ── Step 3: Parse Claude's JSON response ──────────────────────────────────
     cleaned = raw_response.strip()
 
-    # Strip markdown code fences if Claude wrapped the response
     if "```" in cleaned:
-        # Extract content between the first ``` and last ```
-        first = cleaned.index("```") + 3        # skip opening ```
-        last  = cleaned.rindex("```")           # find closing ```
+        first = cleaned.index("```") + 3
+        last  = cleaned.rindex("```")
         cleaned = cleaned[first:last].strip()
-        # Strip language tag if present (e.g. "json\n")
         if cleaned.startswith("json"):
             cleaned = cleaned[4:].strip()
 
     try:
         llm_result = json.loads(cleaned)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         llm_result = {
             "summary": "LLM response could not be parsed. Review raw intel report manually.",
             "reasoning": ["Parse error — manual review required"],
@@ -158,8 +132,6 @@ def explain_entity(entity: Entity) -> dict:
         }
 
     # ── Step 4: Detect LLM / classifier disagreement ─────────────────────────
-    # Disagreement is surfaced explicitly to the operator as an additional signal.
-    # A high classifier score with a deny recommendation = meaningful conflict.
     classifier_recommends_approve = classifier_result["threat_score"] > 0.5
     llm_recommends_approve        = llm_result.get("recommended_action") == "approve_engagement"
     disagreement                  = classifier_recommends_approve != llm_recommends_approve
@@ -179,14 +151,10 @@ def explain_entity(entity: Entity) -> dict:
         ) if disagreement else None,
     }
 
+
 # ── Streaming Explainer ───────────────────────────────────────────────────────
 
 def _build_stream_prompt(entity: Entity, classifier_result: dict) -> str:
-    """
-    Variant of the prompt that asks Claude to reason in prose first,
-    then emit a delimiter, then output the structured JSON.
-    This lets us stream the reasoning and parse the JSON at the end.
-    """
     top_features = sorted(
         classifier_result["feature_importance"].items(),
         key=lambda x: x[1],
@@ -199,6 +167,17 @@ def _build_stream_prompt(entity: Entity, classifier_result: dict) -> str:
     )
 
     probs = classifier_result["probabilities"]
+
+    # ── Anomaly block — identical injection as _build_prompt ─────────────────
+    anomaly_block = ""
+    if classifier_result.get("anomaly_flag"):
+        anomaly_block = f"""
+ANOMALY DETECTION:
+This entity's feature combination is statistically unusual compared to the civilian
+and friendly baseline population (anomaly score: {classifier_result.get('anomaly_score', 'N/A')}).
+This is an independent signal — treat it separately from the classifier label.
+Consider what might explain the anomaly and whether it affects your recommendation.
+"""
 
     return f"""You are an AI analyst assistant in a tactical command and control system called SENTINEL.
 Your role is to help a human operator assess potential threats on the battlefield.
@@ -218,7 +197,7 @@ CLASSIFIER ASSESSMENT:
     Ambiguous:  {probs["ambiguous"]}
 - Top features driving this score:
 {feature_lines}
-
+{anomaly_block}
 First, reason through the evidence in plain prose. Do not use any markdown
 formatting, bold, headers, or asterisks — write as plain text only. Think through what the signals mean,
 what is consistent or inconsistent, and what uncertainty exists. Write 3-5 sentences.
@@ -240,18 +219,14 @@ Then output ONLY this JSON object, no preamble, no markdown:
 
 
 async def stream_explain_entity(entity: Entity):
-    """
-    Async generator that streams the explanation as SSE events.
-
-    Yields strings formatted as SSE events:
-      data: <token text>        — phase 1: reasoning prose tokens
-      data: [STRUCTURED] {...}  — phase 2: final JSON object (single event)
-      data: [DONE]              — signals stream complete
-    """
+    # ── Get classifier + anomaly scores ───────────────────────────────────────
     classifier_result = classifier.score(entity)
+    anomaly_result    = anomaly_detector.score(entity)
+    classifier_result = {**classifier_result, **anomaly_result}  # ← merge
+
     prompt = _build_stream_prompt(entity, classifier_result)
 
-    buffer = ""           # accumulates everything seen so far
+    buffer = ""
     past_delimiter = False
 
     with client.messages.stream(
@@ -261,26 +236,20 @@ async def stream_explain_entity(entity: Entity):
     ) as stream:
         for text in stream.text_stream:
             if past_delimiter:
-                # Phase 2: accumulate JSON silently
                 buffer += text
             else:
                 buffer += text
                 if "---STRUCTURED---" in buffer:
                     past_delimiter = True
-                    # Emit any prose that came before the delimiter
                     prose, _, remainder = buffer.partition("---STRUCTURED---")
                     prose = prose.strip()
                     if prose:
                         yield f"data: {prose}\n\n"
-                    # remainder is the start of the JSON — keep accumulating
                     buffer = remainder
                 else:
-                    # Still in prose phase — stream tokens as they arrive
                     yield f"data: {text}\n\n"
 
-    # Stream finished — buffer now holds the complete JSON
     json_str = buffer.strip()
-    # Strip markdown fences if Claude added them
     if "```" in json_str:
         first = json_str.index("```") + 3
         last  = json_str.rindex("```")
@@ -302,7 +271,6 @@ async def stream_explain_entity(entity: Entity):
             "civilian_risk_rationale": "Unable to assess.",
         }
 
-    # Detect disagreement (same logic as explain_entity)
     classifier_recommends_approve = classifier_result["threat_score"] > 0.5
     llm_recommends_approve        = llm_result.get("recommended_action") == "approve_engagement"
     disagreement                  = classifier_recommends_approve != llm_recommends_approve

@@ -101,7 +101,6 @@ export default function ClassifierResult({ scoreData, loading }: Props) {
       {/* Threat label badge */}
       <div style={{
         marginTop: 'var(--space-sm)',
-        marginBottom: 'var(--space-md)',
         fontSize: 'var(--text-label)',
         fontWeight: 700,
         color: threatColor,
@@ -116,6 +115,37 @@ export default function ClassifierResult({ scoreData, loading }: Props) {
         {scoreData.label.toUpperCase()}
       </div>
 
+      {/* ── ANOMALY BADGE — new ──────────────────────────────────────────── */}
+      {scoreData.anomaly_flag && (
+        <div style={{ marginTop: 'var(--space-xs)' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: 1.5,
+            color: '#EF9F27',
+            background: '#EF9F2718',
+            border: '1px solid #EF9F2744',
+            borderRadius: 'var(--radius-sm)',
+            padding: '2px 6px',
+            fontFamily: 'var(--font-hud)',
+          }}>
+            ⚠ ANOMALY
+          </div>
+          <div style={{
+            fontSize: 'var(--text-data)',
+            color: 'var(--color-text-muted)',
+            fontFamily: 'var(--font-data)',
+            marginTop: 2,
+          }}>
+            deviation {scoreData.anomaly_score}
+          </div>
+        </div>
+      )}
+      {/* ── end anomaly badge ────────────────────────────────────────────── */}
+
       {/* Feature importance heading */}
       <div style={{
         fontSize: 9,
@@ -124,7 +154,7 @@ export default function ClassifierResult({ scoreData, loading }: Props) {
         color: 'var(--color-text-muted)',
         fontFamily: 'var(--font-hud)',
         marginBottom: 'var(--space-xs)',
-        marginTop: 'var(--space-xs)',
+        marginTop: 'var(--space-md)',
       }}>
         FEATURE IMPORTANCE
       </div>
